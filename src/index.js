@@ -21,7 +21,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: [
-      process.env.SOCKET_SERVER_BASE_URL_FROM_FRONT_END,
+      process.env.SOCKET_SERVER_BASE_URL_FROM_FRONT_END ||
+        "http://localhost:3000",
       process.env.SOCKET_SERVER_BASE_URL_ANY,
     ],
     credentials: true,
