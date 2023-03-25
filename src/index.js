@@ -39,12 +39,13 @@ let users = [];
 const statusUser = (userId, socketId) => {
   // check array, nếu có user đó --> true
   !users.some((user) => user.userId === userId) &&
+    userId &&
     users.push({ userId, socketId });
 };
 
 // Handle logic here
 io.on("connection", (socket) => {
-  console.log("---> A user connected... " + `${socket.id}`);
+  // console.log("---> A user connected... " + `${socket.id}`);
 
   // user join room (room: conversation id)
   socket.on("join_room", (room) => {
@@ -64,7 +65,7 @@ io.on("connection", (socket) => {
 
   // status user
   socket.on("status_user", (userId) => {
-    // console.log("---> A user connected... " + `${socket.id} -> ${userId}`);
+    console.log("---> A user connected... " + `${socket.id} -> ${userId}`);
     try {
       statusUser(userId, socket.id);
 
@@ -153,19 +154,37 @@ io.on("connection", (socket) => {
     }
   });
 
+  // socket.on('user_connection', )
+
   // call id room to user
   socket.on("call_id_room_to_user", ({ conversation, infoDoctor }) => {
-    console.log("[conversation ID]", conversation);
-    console.log("[infoDoctor]", infoDoctor);
+    // console.log("[conversation ID]", conversation);
+    // console.log("[infoDoctor]", infoDoctor);
+    // console.log(users);
 
-    try {
-      io.to(conversation.member._id).emit("call_id_room_to_user_success", {
-        room_id: conversation._id,
-        doctor_username: infoDoctor.person.username,
-      });
-    } catch (err) {
-      console.log({ err });
-    }
+    const getUserId = users.find(
+      (_user) => _user.userId === conversation.member._id
+    );
+
+    // console.log("getUserId", getUserId);
+
+    // try {
+    //   io.to(getUserId.socketId).emit("call_id_room_to_user_success", {
+    //     room_id: conversation._id,
+    //     doctor_username: infoDoctor.person.username,
+    //   });
+
+    //   io.to(getUserId.socketId).emit("test", "Hi!");
+    // } catch (err) {
+    //   console.log({ err });
+    // }
+  });
+
+  // user leaved room call
+  socket.on("user_leave_room_call", ({ username, roomId }) => {
+    console.log("[USER LEAVED] ->" + username + "-" + roomId);
+
+    io.to(roomId).emit("user_leave_room_call_success", { username, roomId });
   });
 
   // test socket
