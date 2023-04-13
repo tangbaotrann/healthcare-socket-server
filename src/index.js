@@ -36,20 +36,41 @@ const io = new Server(server, {
 let users = [];
 
 // add user
-const statusUser = (userId, socketId) => {
-  // check array, nếu có user đó --> true
+const addUser = (userId, socketId) => {
   !users.some((user) => user.userId === userId) &&
     userId &&
     users.push({ userId, socketId });
 };
 
+// remove user
+const removeUser = (socketId) => {
+  users = users.filter((user) => user.socketId !== socketId);
+};
+
+const getUser = (userId) => {
+  return users.find((user) => user.userId === userId);
+};
+
 // Handle logic here
 io.on("connection", (socket) => {
-  // console.log("---> A user connected... " + `${socket.id}`);
+  console.log("---> A user connected... " + `${socket.id}`);
+
+  // When user disconnected
+  socket.on("disconnect", () => {
+    try {
+      console.log("---> A user disconnected.", socket.id);
+      removeUser(socket.id);
+
+      // (get users when online)
+      io.emit("get_users", users);
+    } catch (err) {
+      console.log(err);
+    }
+  });
 
   // user join room (room: conversation id)
   socket.on("join_room", (room) => {
-    console.log("[ROOM]", room);
+    // console.log("[ROOM]", room);
     try {
       const { _id } = room;
 
@@ -63,11 +84,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  // status user
-  socket.on("status_user", (userId) => {
-    console.log("---> A user connected... " + `${socket.id} -> ${userId}`);
+  // add user (status)
+  socket.on("add_user", (userId) => {
+    // console.log("---> A user connected... " + `${socket.id} -> ${userId}`);
     try {
-      statusUser(userId, socket.id);
+      addUser(userId, socket.id);
 
       io.emit("get_users", users);
     } catch (err) {
@@ -91,42 +112,13 @@ io.on("connection", (socket) => {
   // rule: RULE_NOTIFICATION_REGISTER_SCHEDULE
   socket.on("notification_confirm_register_schedule", ({ data }) => {
     try {
-      // console.log("[NOTIFICATION REGISTER SCHEDULE] ->", data);
+      console.log("[NOTIFICATION REGISTER SCHEDULE] ->", data);
       const { notification } = data;
 
-      io.to(notification.to).emit(
+      const userArrival = getUser(notification.to);
+
+      io.to(userArrival.socketId).emit(
         "notification_confirm_register_schedule_success",
-        notification
-      );
-    } catch (err) {
-      console.log({ err });
-    }
-  });
-
-  // rule: RULE_NOTIFICATION_CANCEL_SCHEDULE
-  socket.on("notification_confirm_cancel_schedule", ({ data }) => {
-    try {
-      // console.log("[NOTIFICATION CANCEL SCHEDULE] ->", data);
-      const { notification } = data;
-
-      io.to(notification.to).emit(
-        "notification_confirm_cancel_schedule_success",
-        notification
-      );
-    } catch (err) {
-      console.log({ err });
-    }
-  });
-
-  // rule: RULE_DOCTOR_REMIND
-  socket.on("notification_doctor_remind", ({ data }) => {
-    // console.log("[NOTIFICATION DOCTOR REMIND] ->", data);
-
-    try {
-      const { notification } = data;
-
-      io.to(notification.to).emit(
-        "notification_doctor_remind_success",
         notification
       );
     } catch (err) {
@@ -136,16 +128,12 @@ io.on("connection", (socket) => {
 
   // register schedule from patient
   socket.on("notification_register_schedule_from_patient", ({ data }) => {
-    // console.log("notification ->", data);
+    console.log("notification ->", data);
     try {
-      // console.log("[NOTIFICATION- REGISTER SCHEDULE FROM PATIENT] -> ", data);
-      // console.log(
-      //   "[CONVERSATION- REGISTER SCHEDULE FROM PATIENT] -> ",
-      //   conversation
-      // );
+      const userArrival = getUser(data.to);
 
       // emit
-      io.to(data.to).emit(
+      io.to(userArrival.socketId).emit(
         "notification_register_schedule_from_patient_success",
         data
       );
@@ -154,41 +142,42 @@ io.on("connection", (socket) => {
     }
   });
 
-  // socket.on('user_connection', )
-
   // call id room to user
-  socket.on("call_id_room_to_user", ({ conversation, infoDoctor }) => {
-    // console.log("[conversation ID]", conversation);
-    // console.log("[infoDoctor]", infoDoctor);
-    // console.log(users);
+  socket.on(
+    "call_id_room_to_user",
+    ({ conversation, infoDoctor, _scheduleMedicalMeeting }) => {
+      console.log("[conversation ID]", conversation);
+      console.log("[infoDoctor]", infoDoctor);
+      console.log("[_scheduleMedicalMeeting]", _scheduleMedicalMeeting);
 
-    const getUserId = users.find(
-      (_user) => _user.userId === conversation.member._id
-    );
+      const userWantToCall = getUser(conversation.member._id);
+      console.log("userWantToCall", userWantToCall);
 
-    // console.log("getUserId", getUserId);
-
-    // try {
-    //   io.to(getUserId.socketId).emit("call_id_room_to_user_success", {
-    //     room_id: conversation._id,
-    //     doctor_username: infoDoctor.person.username,
-    //   });
-
-    //   io.to(getUserId.socketId).emit("test", "Hi!");
-    // } catch (err) {
-    //   console.log({ err });
-    // }
-  });
+      try {
+        if (userWantToCall && _scheduleMedicalMeeting !== undefined) {
+          io.to(userWantToCall.socketId).emit("call_id_room_to_user_success", {
+            room_id: conversation._id,
+            info_doctor: infoDoctor,
+            schedule_details_id: _scheduleMedicalMeeting._id,
+          });
+        } else if (userWantToCall) {
+          io.to(userWantToCall.socketId).emit("call_id_room_to_user_success", {
+            room_id: conversation._id,
+            info_doctor: infoDoctor,
+          });
+        }
+      } catch (err) {
+        console.log({ err });
+      }
+    }
+  );
 
   // user leaved room call
   socket.on("user_leave_room_call", ({ username, roomId }) => {
-    console.log("[USER LEAVED] ->" + username + "-" + roomId);
+    // console.log("[USER LEAVED] ->" + username + "-" + roomId);
 
     io.to(roomId).emit("user_leave_room_call_success", { username, roomId });
   });
-
-  // test socket
-  io.emit("from_server", "Hello client!!!");
 });
 
 // test run on web
