@@ -117,10 +117,12 @@ io.on("connection", (socket) => {
 
       const userArrival = getUser(notification.to);
 
-      io.to(userArrival.socketId).emit(
-        "notification_confirm_register_schedule_success",
-        notification
-      );
+      if (userArrival !== undefined) {
+        io.to(userArrival.socketId).emit(
+          "notification_confirm_register_schedule_success",
+          notification
+        );
+      }
     } catch (err) {
       console.log({ err });
     }
@@ -128,15 +130,25 @@ io.on("connection", (socket) => {
 
   // register schedule from patient
   socket.on("notification_register_schedule_from_patient", ({ data }) => {
-    console.log("notification ->", data);
+    // console.log("notification ->", data);
+    const { notification, schedule_detail } = data;
+
+    console.log("notification ->", notification);
+    console.log("schedule_detail ->", schedule_detail);
+
     try {
-      const userArrival = getUser(data.to);
+      const userArrival = getUser(notification.to); // schedule_detail.doctor._id
 
       // emit
-      io.to(userArrival.socketId).emit(
-        "notification_register_schedule_from_patient_success",
-        data
-      );
+      if (userArrival !== undefined) {
+        io.to(userArrival.socketId).emit(
+          "notification_register_schedule_from_patient_success",
+          {
+            schedule_detail,
+            notification,
+          }
+        );
+      }
     } catch (err) {
       console.log({ err });
     }
