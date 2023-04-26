@@ -5,6 +5,8 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
+// const { default: parserUTF8Config } = require("../utils/parserUTF8Config");
+const parserUTF8Config = require("../utils/parserUTF8Config");
 
 // app
 const app = express();
@@ -98,12 +100,23 @@ io.on("connection", (socket) => {
 
   // send message
   socket.on("send_message", ({ message }) => {
-    // console.log("[MESSAGE] -> ", message);
+    console.log("[MESSAGE] -> ", message);
     try {
-      const { conversation } = message;
+      const { receiverId, conversation } = message;
+      // console.log("receiverId", receiverId);
       // console.log("[conversation send message]", conversation);
 
+      const _user = getUser(receiverId);
+      // console.log("[_user] -> ", _user);
+      // console.log("[users] -> ", users);
+
+      // if (_user !== undefined) {
       io.to(conversation).emit("receiver_message", { message });
+      // }
+
+      if (_user.socketId) {
+        io.emit("message_notification", "Bạn vừa nhận được tin nhắn mới.");
+      }
     } catch (err) {
       console.log({ err });
     }
@@ -113,14 +126,20 @@ io.on("connection", (socket) => {
   socket.on("notification_confirm_register_schedule", ({ data }) => {
     try {
       console.log("[NOTIFICATION REGISTER SCHEDULE] ->", data);
-      const { notification } = data;
+      const { notification, schedule_detail_id } = data;
+
+      console.log("notification -->", notification);
+      console.log("schedule_detail_id -->", schedule_detail_id);
 
       const userArrival = getUser(notification.to);
 
       if (userArrival !== undefined) {
         io.to(userArrival.socketId).emit(
           "notification_confirm_register_schedule_success",
-          notification
+          {
+            notification,
+            schedule_detail_id,
+          }
         );
       }
     } catch (err) {
@@ -157,25 +176,33 @@ io.on("connection", (socket) => {
   // call id room to user
   socket.on(
     "call_id_room_to_user",
-    ({ conversation, infoDoctor, _scheduleMedicalMeeting }) => {
+    ({ conversation, infoDoctor, _scheduleMedicalMeeting, patient_id }) => {
       console.log("[conversation ID]", conversation);
       console.log("[infoDoctor]", infoDoctor);
-      console.log("[_scheduleMedicalMeeting]", _scheduleMedicalMeeting);
-
-      const userWantToCall = getUser(conversation.member._id);
-      console.log("userWantToCall", userWantToCall);
+      // console.log("[_scheduleMedicalMeeting]", _scheduleMedicalMeeting);
+      console.log("[patient_id]", patient_id);
 
       try {
+        const checkUser = conversation?.member
+          ? conversation.member._id
+          : patient_id;
+
+        const userWantToCall = getUser(checkUser);
+        console.log("checkUser", checkUser);
+        console.log("userWantToCall", userWantToCall);
+
         if (userWantToCall && _scheduleMedicalMeeting !== undefined) {
           io.to(userWantToCall.socketId).emit("call_id_room_to_user_success", {
-            room_id: conversation._id,
+            room_id: conversation?._id ? conversation._id : conversation,
             info_doctor: infoDoctor,
             schedule_details_id: _scheduleMedicalMeeting._id,
+            info_patient: parserUTF8Config(conversation.member.username),
           });
         } else if (userWantToCall) {
           io.to(userWantToCall.socketId).emit("call_id_room_to_user_success", {
-            room_id: conversation._id,
+            room_id: conversation?._id ? conversation._id : conversation,
             info_doctor: infoDoctor,
+            info_patient: parserUTF8Config(conversation.member.username),
           });
         }
       } catch (err) {
