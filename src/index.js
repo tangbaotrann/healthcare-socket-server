@@ -25,10 +25,10 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: [
-      process.env.SOCKET_SERVER_BASE_URL_FROM_FRONT_END ||
-        "http://localhost:3000",
+      process.env.SOCKET_SERVER_BASE_URL_FROM_FRONT_END,
       process.env.SOCKET_SERVER_BASE_URL_ANY,
     ],
+    methods: ["GET", "POST"],
     credentials: true,
   },
 });
@@ -210,6 +210,20 @@ io.on("connection", (socket) => {
       }
     }
   );
+
+  // call_now_to_user
+  socket.on("call_now_to_user", ({ nowCall }) => {
+    console.log("[nowCall] =>", nowCall);
+
+    const _user = getUser(nowCall.patient._id);
+    console.log("[_user] =>", _user);
+
+    if (_user) {
+      io.to(_user.socketId).emit("call_now_to_user_success", {
+        nowCall,
+      });
+    }
+  });
 
   // user leaved room call
   socket.on("user_leave_room_call", ({ username, roomId }) => {
