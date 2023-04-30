@@ -106,7 +106,7 @@ io.on("connection", (socket) => {
       // console.log("receiverId", receiverId);
       // console.log("[conversation send message]", conversation);
 
-      const _user = getUser(receiverId);
+      // const _user = getUser(receiverId);
       // console.log("[_user] -> ", _user);
       // console.log("[users] -> ", users);
 
@@ -114,9 +114,9 @@ io.on("connection", (socket) => {
       io.to(conversation).emit("receiver_message", { message });
       // }
 
-      if (_user.socketId) {
-        io.emit("message_notification", "Bạn vừa nhận được tin nhắn mới.");
-      }
+      // if (_user.socketId) {
+      //   io.to(_user.socketId).emit("receiver_message", { message });
+      // }
     } catch (err) {
       console.log({ err });
     }
@@ -149,7 +149,7 @@ io.on("connection", (socket) => {
 
   // register schedule from patient
   socket.on("notification_register_schedule_from_patient", ({ data }) => {
-    // console.log("notification ->", data);
+    console.log("notification ->", data);
     const { notification, schedule_detail } = data;
 
     console.log("notification ->", notification);
@@ -163,8 +163,8 @@ io.on("connection", (socket) => {
         io.to(userArrival.socketId).emit(
           "notification_register_schedule_from_patient_success",
           {
-            schedule_detail,
             notification,
+            schedule_detail,
           }
         );
       }
@@ -212,16 +212,23 @@ io.on("connection", (socket) => {
   );
 
   // call_now_to_user
-  socket.on("call_now_to_user", ({ nowCall }) => {
-    console.log("[nowCall] =>", nowCall);
+  socket.on("call_now_to_user", ({ conversation, infoDoctor }) => {
+    console.log("[conversation] =>", conversation);
+    console.log("[infoDoctor] =>", infoDoctor);
 
-    const _user = getUser(nowCall.patient._id);
-    console.log("[_user] =>", _user);
+    try {
+      const _user = getUser(conversation.member._id);
+      console.log("[_user] =>", _user);
 
-    if (_user) {
-      io.to(_user.socketId).emit("call_now_to_user_success", {
-        nowCall,
-      });
+      if (_user) {
+        io.to(_user.socketId).emit("call_now_to_user_success", {
+          room_id: conversation._id,
+          info_doctor: infoDoctor,
+          info_patient: parserUTF8Config(conversation.member.username),
+        });
+      }
+    } catch ({ err }) {
+      console.log({ err });
     }
   });
 
@@ -229,7 +236,31 @@ io.on("connection", (socket) => {
   socket.on("user_leave_room_call", ({ username, roomId }) => {
     // console.log("[USER LEAVED] ->" + username + "-" + roomId);
 
-    io.to(roomId).emit("user_leave_room_call_success", { username, roomId });
+    try {
+      io.to(roomId).emit("user_leave_room_call_success", { username, roomId });
+    } catch ({ err }) {
+      console.log({ err });
+    }
+  });
+
+  // liked
+  socket.on("like_post_from_patient", ({ data }) => {
+    console.log("data ->", data);
+
+    try {
+      const { author, title } = data;
+
+      const _user = getUser(author._id);
+
+      if (_user) {
+        io.to(_user.socketId).emit("like_post_from_patient", {
+          author,
+          title,
+        });
+      }
+    } catch ({ err }) {
+      console.log({ err });
+    }
   });
 });
 
