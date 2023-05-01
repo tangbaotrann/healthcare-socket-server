@@ -72,12 +72,21 @@ io.on("connection", (socket) => {
 
   // user join room (room: conversation id)
   socket.on("join_room", (room) => {
-    // console.log("[ROOM]", room);
+    console.log("[ROOM]", room);
     try {
-      const { _id } = room;
+      if (room) {
+        const { _id } = room;
+        console.log("[_id]", _id);
+        socket.join(_id);
+        socket.emit("joined_room", _id);
+      }
 
-      socket.join(_id);
-      socket.emit("joined_room", _id);
+      if (room.room_id) {
+        // const { room_id } = roomId;
+        console.log("[room_id]", room.room_id);
+        socket.join(room.room_id);
+        socket.emit("joined_room", room.room_id);
+      }
 
       // (get users when online)
       io.emit("get_users", users);
@@ -232,9 +241,30 @@ io.on("connection", (socket) => {
     }
   });
 
+  // user join room call
+  socket.on("rating_for_doctor", ({ conversation_id, patient_id }) => {
+    console.log("conversation_id", conversation_id);
+    console.log("patient_id", patient_id);
+
+    try {
+      const _user = getUser(patient_id);
+      console.log("_user", _user);
+
+      if (_user) {
+        io.to(_user.socketId).emit("rating_for_doctor_success", {
+          conversation_id,
+          patient_id,
+        });
+      }
+    } catch (err) {
+      console.log({ err });
+    }
+  });
+
   // user leaved room call
   socket.on("user_leave_room_call", ({ username, roomId }) => {
-    // console.log("[USER LEAVED] ->" + username + "-" + roomId);
+    console.log("[USER LEAVED] ->" + username + "-" + roomId);
+    // console.log("record ->", record);
 
     try {
       io.to(roomId).emit("user_leave_room_call_success", { username, roomId });
@@ -242,6 +272,29 @@ io.on("connection", (socket) => {
       console.log({ err });
     }
   });
+
+  // user patient leaved room call
+  // socket.on(
+  //   "user_patient_leave_room_call",
+  //   ({ username, roomId, scheduleDetailId }) => {
+  //     console.log(
+  //       "[USER PATIENT LEAVED] ->" + username + "-" + roomId + "-",
+  //       scheduleDetailId
+  //     );
+
+  //     try {
+  //       // if (scheduleDetailId) {
+  //       io.to(roomId).emit("user_patient_leave_room_call_success", {
+  //         username,
+  //         roomId,
+  //         scheduleDetailId,
+  //       });
+  //       // }
+  //     } catch ({ err }) {
+  //       console.log({ err });
+  //     }
+  //   }
+  // );
 
   // liked
   socket.on("like_post_from_patient", ({ data }) => {
