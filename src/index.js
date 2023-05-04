@@ -70,6 +70,18 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("user_disconnect", ({ __user }) => {
+    try {
+      if (__user) {
+        const _user = getUser(__user);
+        console.log("_user", _user);
+        removeUser(_user.socketId);
+      }
+    } catch (err) {
+      console.log({ err });
+    }
+  });
+
   // user join room (room: conversation id)
   socket.on("join_room", (room) => {
     console.log("[ROOM]", room);
@@ -81,7 +93,7 @@ io.on("connection", (socket) => {
         socket.emit("joined_room", _id);
       }
 
-      if (room.room_id) {
+      if (room?.room_id) {
         // const { room_id } = roomId;
         console.log("[room_id]", room.room_id);
         socket.join(room.room_id);
@@ -137,8 +149,8 @@ io.on("connection", (socket) => {
       console.log("[NOTIFICATION REGISTER SCHEDULE] ->", data);
       const { notification, schedule_detail_id } = data;
 
-      console.log("notification -->", notification);
-      console.log("schedule_detail_id -->", schedule_detail_id);
+      // console.log("notification -->", notification);
+      // console.log("schedule_detail_id -->", schedule_detail_id);
 
       const userArrival = getUser(notification.to);
 
@@ -161,8 +173,8 @@ io.on("connection", (socket) => {
     console.log("notification ->", data);
     const { notification, schedule_detail } = data;
 
-    console.log("notification ->", notification);
-    console.log("schedule_detail ->", schedule_detail);
+    // console.log("notification ->", notification);
+    // console.log("schedule_detail ->", schedule_detail);
 
     try {
       const userArrival = getUser(notification.to); // schedule_detail.doctor._id
@@ -186,10 +198,10 @@ io.on("connection", (socket) => {
   socket.on(
     "call_id_room_to_user",
     ({ conversation, infoDoctor, _scheduleMedicalMeeting, patient_id }) => {
-      console.log("[conversation ID]", conversation);
-      console.log("[infoDoctor]", infoDoctor);
+      // console.log("[conversation ID]", conversation);
+      // console.log("[infoDoctor]", infoDoctor);
       // console.log("[_scheduleMedicalMeeting]", _scheduleMedicalMeeting);
-      console.log("[patient_id]", patient_id);
+      // console.log("[patient_id]", patient_id);
 
       try {
         const checkUser = conversation?.member
@@ -222,8 +234,8 @@ io.on("connection", (socket) => {
 
   // call_now_to_user
   socket.on("call_now_to_user", ({ conversation, infoDoctor }) => {
-    console.log("[conversation] =>", conversation);
-    console.log("[infoDoctor] =>", infoDoctor);
+    // console.log("[conversation] =>", conversation);
+    // console.log("[infoDoctor] =>", infoDoctor);
 
     try {
       const _user = getUser(conversation.member._id);
@@ -243,8 +255,8 @@ io.on("connection", (socket) => {
 
   // user join room call
   socket.on("rating_for_doctor", ({ conversation_id, patient_id }) => {
-    console.log("conversation_id", conversation_id);
-    console.log("patient_id", patient_id);
+    // console.log("conversation_id", conversation_id);
+    // console.log("patient_id", patient_id);
 
     try {
       const _user = getUser(patient_id);
@@ -263,7 +275,7 @@ io.on("connection", (socket) => {
 
   // user leaved room call
   socket.on("user_leave_room_call", ({ username, roomId }) => {
-    console.log("[USER LEAVED] ->" + username + "-" + roomId);
+    // console.log("[USER LEAVED] ->" + username + "-" + roomId);
     // console.log("record ->", record);
 
     try {
@@ -272,29 +284,6 @@ io.on("connection", (socket) => {
       console.log({ err });
     }
   });
-
-  // user patient leaved room call
-  // socket.on(
-  //   "user_patient_leave_room_call",
-  //   ({ username, roomId, scheduleDetailId }) => {
-  //     console.log(
-  //       "[USER PATIENT LEAVED] ->" + username + "-" + roomId + "-",
-  //       scheduleDetailId
-  //     );
-
-  //     try {
-  //       // if (scheduleDetailId) {
-  //       io.to(roomId).emit("user_patient_leave_room_call_success", {
-  //         username,
-  //         roomId,
-  //         scheduleDetailId,
-  //       });
-  //       // }
-  //     } catch ({ err }) {
-  //       console.log({ err });
-  //     }
-  //   }
-  // );
 
   // liked
   socket.on("like_post_from_patient", ({ data }) => {
