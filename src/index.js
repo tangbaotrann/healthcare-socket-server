@@ -75,6 +75,7 @@ io.on("connection", (socket) => {
       if (__user) {
         const _user = getUser(__user);
         console.log("_user", _user);
+
         removeUser(_user.socketId);
       }
     } catch (err) {
@@ -84,18 +85,18 @@ io.on("connection", (socket) => {
 
   // user join room (room: conversation id)
   socket.on("join_room", (room) => {
-    console.log("[ROOM]", room);
+    // console.log("[ROOM]", room);
     try {
       if (room) {
         const { _id } = room;
-        console.log("[_id]", _id);
+        // console.log("[_id]", _id);
         socket.join(_id);
         socket.emit("joined_room", _id);
       }
 
       if (room?.room_id) {
         // const { room_id } = roomId;
-        console.log("[room_id]", room.room_id);
+        // console.log("[room_id]", room.room_id);
         socket.join(room.room_id);
         socket.emit("joined_room", room.room_id);
       }
@@ -146,13 +147,17 @@ io.on("connection", (socket) => {
   // rule: RULE_NOTIFICATION_REGISTER_SCHEDULE
   socket.on("notification_confirm_register_schedule", ({ data }) => {
     try {
-      console.log("[NOTIFICATION REGISTER SCHEDULE] ->", data);
+      // console.log("[NOTIFICATION REGISTER SCHEDULE] ->", data);
       const { notification, schedule_detail_id } = data;
 
       // console.log("notification -->", notification);
       // console.log("schedule_detail_id -->", schedule_detail_id);
 
       const userArrival = getUser(notification.to);
+      console.log(
+        "[userArrival] notification_confirm_register_schedule ->",
+        userArrival
+      );
 
       if (userArrival !== undefined) {
         io.to(userArrival.socketId).emit(
@@ -170,7 +175,7 @@ io.on("connection", (socket) => {
 
   // register schedule from patient
   socket.on("notification_register_schedule_from_patient", ({ data }) => {
-    console.log("notification ->", data);
+    // console.log("notification ->", data);
     const { notification, schedule_detail } = data;
 
     // console.log("notification ->", notification);
@@ -178,6 +183,10 @@ io.on("connection", (socket) => {
 
     try {
       const userArrival = getUser(notification.to); // schedule_detail.doctor._id
+      console.log(
+        "[userArrival] notification_register_schedule_from_patient ->",
+        userArrival
+      );
 
       // emit
       if (userArrival !== undefined) {
@@ -233,7 +242,7 @@ io.on("connection", (socket) => {
   );
 
   // call_now_to_user
-  socket.on("call_now_to_user", ({ conversation, infoDoctor }) => {
+  socket.on("call_now_to_user", ({ conversation, infoDoctor, patients }) => {
     // console.log("[conversation] =>", conversation);
     // console.log("[infoDoctor] =>", infoDoctor);
 
@@ -244,7 +253,7 @@ io.on("connection", (socket) => {
       if (_user) {
         io.to(_user.socketId).emit("call_now_to_user_success", {
           room_id: conversation._id,
-          info_doctor: infoDoctor,
+          info_doctor: infoDoctor ? infoDoctor : patients,
           info_patient: parserUTF8Config(conversation.member.username),
         });
       }
@@ -252,6 +261,38 @@ io.on("connection", (socket) => {
       console.log({ err });
     }
   });
+
+  // not accept call
+  socket.on(
+    "call_now_not_accept_to_user",
+    ({ small_id, roomId, schedule_details_id, patient_id }) => {
+      console.log("[small_id] ->", small_id);
+      console.log("[roomId] ->", roomId);
+      console.log("[schedule_details_id] ->", schedule_details_id);
+      console.log("[patient_id] ->", patient_id);
+
+      try {
+        if (roomId) {
+          if (schedule_details_id) {
+            io.to(roomId).emit("call_now_not_accept_to_user_success", {
+              small_id,
+              roomId,
+              schedule_details_id,
+              patient_id,
+            });
+          } else {
+            io.to(roomId).emit("call_now_not_accept_to_user_success", {
+              small_id,
+              roomId,
+              patient_id,
+            });
+          }
+        }
+      } catch (err) {
+        console.log({ err });
+      }
+    }
+  );
 
   // user join room call
   socket.on("rating_for_doctor", ({ conversation_id, patient_id }) => {
@@ -293,6 +334,7 @@ io.on("connection", (socket) => {
       const { author, title } = data;
 
       const _user = getUser(author._id);
+      console.log("[_user] like_post_from_patient ->", _user);
 
       if (_user) {
         io.to(_user.socketId).emit("like_post_from_patient", {
